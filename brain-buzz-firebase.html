@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Brain Buzz — Live Trivia</title>
+<style>
+  :root{
+    --coral:#FF6B5C; --aqua:#3DE0C0; --yellow:#FFD23F; --green:#57D98E;
+    --white:#FBF7FF; --lav:#B9A9D9;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    min-height:100vh; color:var(--white);
+    font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(120% 90% at 50% 0%, #43206F 0%, #2A1751 48%, #1A1036 100%);
+    display:flex; align-items:center; justify-content:center; padding:32px 20px;
+  }
+  .wrap{ width:100%; max-width:460px; }
+  .center{ text-align:center; }
+  .left{ text-align:left; }
+  .muted{ color:var(--lav); font-size:14px; }
+  .tag{ color:var(--lav); text-align:center; font-size:17px; margin:8px 0 0; }
+  .title{ font-size:52px; font-weight:900; letter-spacing:-1px; text-align:center; margin:0; }
+  .emoji{ font-size:42px; }
+  .spot{ position:relative; display:flex; align-items:center; justify-content:center; min-height:120px; }
+  .spot::before{ content:""; position:absolute; width:210px; height:210px; border-radius:50%;
+    background:radial-gradient(circle, color-mix(in srgb, var(--g) 34%, transparent) 0%, transparent 70%);
+    animation:glow 3.2s ease-in-out infinite; }
+  .field{ width:100%; padding:14px 16px; font-size:18px; border-radius:16px; color:var(--white);
+    background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.16); outline:none; }
+  .field.code{ text-align:center; letter-spacing:.3em; font-weight:800; text-transform:uppercase; }
+  .cta{ width:100%; padding:16px 20px; border-radius:18px; border:none; font-weight:800; font-size:18px;
+    cursor:pointer; margin-top:16px; transition:transform .08s ease, filter .15s ease; color:#2A0E0A; }
+  .cta:active{ transform:scale(.98); }
+  .cta:hover{ filter:brightness(1.05); }
+  .cta:disabled{ opacity:.45; cursor:default; }
+  .cta.coral{ background:var(--coral); }
+  .cta.aqua{ background:var(--aqua); color:#06342B; }
+  .cta.ghost{ background:transparent; border:1px solid rgba(255,255,255,.25); color:var(--white); }
+  .cta.sm{ width:auto; margin-top:0; padding:14px 22px; }
+  .row{ display:flex; gap:8px; }
+  .row3{ display:flex; gap:8px; }
+  .or{ display:flex; align-items:center; gap:12px; color:var(--lav); margin:20px 0; }
+  .or span{ flex:1; height:1px; background:rgba(255,255,255,.15); }
+  .or em{ font-style:normal; font-size:14px; }
+  .msg{ color:var(--coral); font-size:14px; margin-top:10px; min-height:18px; }
+  .card{ background:rgba(255,255,255,.06); border-radius:18px; padding:16px; margin-top:20px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .chip{ padding:6px 12px; border-radius:999px; font-weight:600; font-size:15px;
+    background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.14); }
+  .chip.me{ background:color-mix(in srgb, var(--yellow) 18%, transparent); border-color:color-mix(in srgb, var(--yellow) 55%, transparent); }
+  .code-big{ font-size:60px; font-weight:900; letter-spacing:.2em; color:var(--yellow); margin:6px 0; }
+  .pill{ flex:1; padding:12px 0; border-radius:16px; font-size:18px; font-weight:700; cursor:pointer;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); color:var(--white); }
+  .pill.on{ background:var(--coral); color:#2A0E0A; border-color:transparent; }
+  .qhead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .dpill{ padding:5px 12px; border-radius:999px; font-size:14px; font-weight:700;
+    color:var(--dc); background:color-mix(in srgb, var(--dc) 14%, transparent); border:1px solid color-mix(in srgb, var(--dc) 45%, transparent); }
+  .tbar{ width:100%; height:8px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden; }
+  .tfill{ height:8px; border-radius:999px; background:var(--aqua); width:100%; transition:width 1s linear; }
+  .ttext{ text-align:center; font-size:14px; color:var(--lav); margin-top:4px; margin-bottom:8px; }
+  .qcard{ background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-radius:22px; padding:20px; text-align:center; margin-bottom:16px; }
+  .qtext{ font-size:24px; font-weight:800; line-height:1.2; margin-top:6px; }
+  .opts{ display:flex; flex-direction:column; gap:12px; }
+  .opt{ width:100%; text-align:left; padding:16px 18px; border-radius:16px; font-size:17px; font-weight:600; cursor:pointer;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); color:var(--white);
+    transition:transform .08s ease, background .15s ease, border-color .15s ease; }
+  .opt:hover:not(:disabled){ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.3); }
+  .opt:active:not(:disabled){ transform:scale(.98); }
+  .opt:disabled{ cursor:default; opacity:.55; }
+  .opt.picked{ background:color-mix(in srgb, var(--aqua) 18%, transparent); border-color:color-mix(in srgb, var(--aqua) 60%, transparent); opacity:1; }
+  .status{ font-size:30px; font-weight:900; }
+  .ans{ text-align:left; padding:12px 16px; border-radius:16px; margin-top:12px; }
+  .ans.ok{ background:color-mix(in srgb, var(--green) 12%, transparent); border:1px solid color-mix(in srgb, var(--green) 40%, transparent); }
+  .ans.no{ background:color-mix(in srgb, var(--coral) 12%, transparent); border:1px solid color-mix(in srgb, var(--coral) 40%, transparent); }
+  .fact{ text-align:left; background:rgba(255,255,255,.06); border-radius:16px; padding:14px 16px; margin-top:12px; font-size:15px; }
+  .board{ display:flex; flex-direction:column; gap:8px; }
+  .brow{ display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-radius:16px;
+    background:rgba(255,255,255,.06); border:1px solid transparent; font-weight:600; }
+  .brow.top{ background:color-mix(in srgb, var(--yellow) 16%, transparent); border-color:color-mix(in srgb, var(--yellow) 45%, transparent); }
+  .brow b{ font-weight:900; }
+  .steps b{ color:var(--white); }
+  a{ color:var(--aqua); }
+  @keyframes glow{ 0%,100%{opacity:.5} 50%{opacity:.9} }
+  @keyframes pop{ 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+  .pop{ animation:pop .45s ease-out both; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="wrap center">
+    <div class="title" style="font-size:34px">Loading…</div>
+    <p class="tag">If this stays, you're likely viewing the file inside Claude's preview (expected — download and host it), or your device blocked the Firebase script.</p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getDatabase, ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+  /* ============================================================
+     1) PASTE YOUR FIREBASE CONFIG BELOW
+        Firebase console → Project settings → Your apps → Web app.
+        Make sure databaseURL is included (enable Realtime Database first).
+     ============================================================ */
+  const firebaseConfig = {
+    databaseURL: "https://buzz-a5632-default-rtdb.europe-west1.firebasedatabase.app/",
+    projectId: "buzz-a5632"
+  };
+  /* ============================================================ */
+
+  const CONFIG_OK = !!(firebaseConfig.databaseURL && !firebaseConfig.databaseURL.includes("PASTE"));
+
+  // ---- Question bank ----
+  const CAT_ICON = { "Space":"🌌","Animals":"🐙","Human Body":"🧠","Geography":"🗺️","History":"⏳","Science":"🔬","Food & Drink":"🍕" };
+  const BANK = [
+    {cat:"Space",d:1,q:"Which planet is closest to the Sun?",opts:["Mercury","Venus","Earth","Mars"],correct:0,fact:"Mercury is closest, but Venus is the hottest planet — its thick atmosphere traps heat."},
+    {cat:"Space",d:1,q:"What is the name of our galaxy?",opts:["Andromeda","Milky Way","Whirlpool","Orion"],correct:1,fact:"The Milky Way holds an estimated 100–400 billion stars."},
+    {cat:"Space",d:1,q:"A rock from space that lands on Earth is a…",opts:["Comet","Asteroid","Meteorite","Meteor"],correct:2,fact:"In space it's a meteoroid, in the sky a meteor, on the ground a meteorite."},
+    {cat:"Space",d:2,q:"A light-year is a measure of…",opts:["Time","Distance","Speed","Brightness"],correct:1,fact:"One light-year is about 9.46 trillion km — how far light travels in a year."},
+    {cat:"Space",d:2,q:"The Sun is mostly made of which element?",opts:["Oxygen","Hydrogen","Helium","Carbon"],correct:1,fact:"About three-quarters of the Sun's mass is hydrogen."},
+    {cat:"Space",d:3,q:"Which planet rotates on its side?",opts:["Neptune","Uranus","Saturn","Mars"],correct:1,fact:"Uranus is tilted about 98°, likely from an ancient collision."},
+    {cat:"Space",d:3,q:"After the Sun, the closest star to Earth is…",opts:["Sirius","Proxima Centauri","Betelgeuse","Vega"],correct:1,fact:"Proxima Centauri is about 4.24 light-years away."},
+    {cat:"Space",d:2,q:"What causes a solar eclipse?",opts:["Earth blocks the Sun","The Moon blocks the Sun","Clouds","The Sun dims"],correct:1,fact:"The Sun is ~400× wider than the Moon but ~400× farther, so they look the same size."},
+    {cat:"Animals",d:1,q:"The largest animal ever known to have lived is the…",opts:["African elephant","Blue whale","Argentinosaurus","Colossal squid"],correct:1,fact:"A blue whale's heart can weigh as much as a small car."},
+    {cat:"Animals",d:1,q:"How many legs does a spider have?",opts:["6","8","10","12"],correct:1,fact:"Six legs would make it an insect, not a spider."},
+    {cat:"Animals",d:1,q:"What is a baby kangaroo called?",opts:["Cub","Joey","Kit","Calf"],correct:1,fact:"A newborn joey is about the size of a jellybean."},
+    {cat:"Animals",d:2,q:"What is the fastest land animal?",opts:["Cheetah","Pronghorn","Lion","Greyhound"],correct:0,fact:"Cheetahs can hit about 110 km/h (70 mph) in short bursts."},
+    {cat:"Animals",d:2,q:"A group of crows is called a…",opts:["Flock","Murder","Pack","Herd"],correct:1,fact:"A group of owls, by the way, is a 'parliament.'"},
+    {cat:"Animals",d:2,q:"How many hearts does an octopus have?",opts:["1","2","3","4"],correct:2,fact:"Two pump blood to the gills, one to the body — and the blood is blue."},
+    {cat:"Animals",d:3,q:"The only mammal capable of true flight is the…",opts:["Flying squirrel","Bat","Sugar glider","Colugo"],correct:1,fact:"The others only glide; bats are the sole truly flying mammals."},
+    {cat:"Animals",d:3,q:"Which creature can regrow limbs and even heart tissue?",opts:["Starfish","Axolotl","Gecko","Frog"],correct:1,fact:"Axolotls regenerate limbs, spinal cord, and organ tissue remarkably well."},
+    {cat:"Human Body",d:1,q:"The largest organ in the human body is the…",opts:["Liver","Skin","Brain","Lungs"],correct:1,fact:"Skin makes up roughly 15% of your body weight."},
+    {cat:"Human Body",d:1,q:"How many bones are in the adult human body?",opts:["106","206","306","406"],correct:1,fact:"Babies are born with around 300; many fuse as we grow."},
+    {cat:"Human Body",d:1,q:"Which organ pumps blood around the body?",opts:["Lungs","Heart","Liver","Kidneys"],correct:1,fact:"The average heart beats around 100,000 times a day."},
+    {cat:"Human Body",d:2,q:"Which blood type is the universal donor?",opts:["A","B","AB","O negative"],correct:3,fact:"O-negative can be given to almost anyone in an emergency."},
+    {cat:"Human Body",d:2,q:"Roughly what percentage of the body is water?",opts:["20%","40%","60%","90%"],correct:2,fact:"It varies, but about 60% is typical for adults."},
+    {cat:"Human Body",d:2,q:"The smallest bone in the human body is the…",opts:["Stapes (in the ear)","A finger bone","A toe bone","The tailbone"],correct:0,fact:"The stapes in your middle ear is only about 3 mm long."},
+    {cat:"Human Body",d:3,q:"Which body part has the most sweat glands?",opts:["Back","Palms","Soles of the feet","Forehead"],correct:2,fact:"Each foot can pack in over 100,000 sweat glands."},
+    {cat:"Human Body",d:3,q:"Stretched out, the DNA in a single cell is about…",opts:["2 mm","2 cm","2 meters","2 km"],correct:2,fact:"Uncoiled, one cell's DNA is roughly 2 meters long."},
+    {cat:"Geography",d:1,q:"The largest country by land area is…",opts:["Canada","China","USA","Russia"],correct:3,fact:"Russia spans 11 time zones."},
+    {cat:"Geography",d:1,q:"Which ocean is the largest?",opts:["Atlantic","Indian","Arctic","Pacific"],correct:3,fact:"The Pacific covers about a third of Earth's surface."},
+    {cat:"Geography",d:1,q:"The longest river is usually said to be the…",opts:["Amazon","Nile","Yangtze","Mississippi"],correct:1,fact:"The Nile is typically cited at about 6,650 km."},
+    {cat:"Geography",d:2,q:"Which country has the most lakes?",opts:["USA","Russia","Canada","Finland"],correct:2,fact:"Canada has more lake area than the rest of the world combined."},
+    {cat:"Geography",d:2,q:"Everest sits on Nepal's border with which country?",opts:["India","China","Bhutan","Pakistan"],correct:1,fact:"Its summit marks the Nepal–China (Tibet) border."},
+    {cat:"Geography",d:2,q:"The smallest country in the world is…",opts:["Monaco","Nauru","Vatican City","San Marino"],correct:2,fact:"Vatican City is only about 0.49 square kilometers."},
+    {cat:"Geography",d:3,q:"The Sahara Desert is roughly the size of…",opts:["Australia","The USA","Brazil","India"],correct:1,fact:"The Sahara covers an area comparable to the entire United States."},
+    {cat:"Geography",d:3,q:"The only continent in all four hemispheres is…",opts:["Asia","Africa","Antarctica","Oceania"],correct:1,fact:"Africa crosses both the equator and the prime meridian."},
+    {cat:"History",d:1,q:"The Great Pyramid of Giza was built in…",opts:["Iraq","Egypt","Mexico","Greece"],correct:1,fact:"It was the tallest human-made structure for nearly 4,000 years."},
+    {cat:"History",d:1,q:"Who was the first person to walk on the Moon?",opts:["Buzz Aldrin","Neil Armstrong","Yuri Gagarin","Michael Collins"],correct:1,fact:"He stepped onto the surface in July 1969."},
+    {cat:"History",d:1,q:"The Olympic Games originated in…",opts:["Italy","Greece","Egypt","China"],correct:1,fact:"The ancient Games began in Olympia over 2,700 years ago."},
+    {cat:"History",d:2,q:"The Roman numeral 'C' stands for…",opts:["50","100","500","1000"],correct:1,fact:"It comes from the Latin 'centum,' meaning hundred."},
+    {cat:"History",d:2,q:"Which ancient Wonder still survives today?",opts:["Hanging Gardens","Colossus of Rhodes","Great Pyramid of Giza","Lighthouse of Alexandria"],correct:2,fact:"The Great Pyramid is the only ancient wonder still standing."},
+    {cat:"History",d:2,q:"Who invented the printing press in Europe?",opts:["Leonardo da Vinci","Johannes Gutenberg","Isaac Newton","Galileo"],correct:1,fact:"His press in the 1440s helped spark a knowledge revolution."},
+    {cat:"History",d:3,q:"Which empire built over 400,000 km of roads?",opts:["Greek","Roman","Ottoman","Mongol"],correct:1,fact:"Hence the saying: all roads lead to Rome."},
+    {cat:"History",d:3,q:"The last woolly mammoths died out about…",opts:["40,000 years ago","10,000 years ago","4,000 years ago","1,000 years ago"],correct:2,fact:"A group survived on Wrangel Island until ~4,000 years ago — after the pyramids."},
+    {cat:"Science",d:1,q:"The chemical symbol for gold is…",opts:["Go","Gd","Au","Ag"],correct:2,fact:"It comes from the Latin word 'aurum.'"},
+    {cat:"Science",d:1,q:"Which gas do plants absorb for photosynthesis?",opts:["Oxygen","Nitrogen","Carbon dioxide","Hydrogen"],correct:2,fact:"They release oxygen as a byproduct."},
+    {cat:"Science",d:1,q:"Water is hydrogen plus which element?",opts:["Oxygen","Carbon","Nitrogen","Helium"],correct:0,fact:"That's why water is H₂O."},
+    {cat:"Science",d:2,q:"The hardest known natural material is…",opts:["Quartz","Diamond","Titanium","Steel"],correct:1,fact:"Diamond is pure carbon in a super-strong lattice."},
+    {cat:"Science",d:2,q:"The most abundant gas in Earth's air is…",opts:["Oxygen","Carbon dioxide","Nitrogen","Argon"],correct:2,fact:"Nitrogen makes up about 78% of the atmosphere."},
+    {cat:"Science",d:2,q:"Celsius and Fahrenheit are equal at…",opts:["0°","-40°","100°","-273°"],correct:1,fact:"-40°C equals -40°F exactly."},
+    {cat:"Science",d:3,q:"The speed of light in a vacuum is about…",opts:["3,000 km/s","30,000 km/s","300,000 km/s","3,000,000 km/s"],correct:2,fact:"Precisely 299,792 km per second."},
+    {cat:"Science",d:3,q:"Which particle carries a negative charge?",opts:["Proton","Neutron","Electron","Photon"],correct:2,fact:"Protons are positive, neutrons neutral, electrons negative."},
+    {cat:"Food & Drink",d:1,q:"Pizza originated in which country?",opts:["France","Italy","Greece","USA"],correct:1,fact:"Modern pizza traces back to Naples."},
+    {cat:"Food & Drink",d:1,q:"Bees make honey from what?",opts:["Pollen","Nectar","Sap","Water"],correct:1,fact:"They regurgitate and evaporate nectar to create honey."},
+    {cat:"Food & Drink",d:1,q:"A 'porcini' is a type of…",opts:["Fish","Mushroom","Cheese","Pasta"],correct:1,fact:"Porcini are prized wild mushrooms."},
+    {cat:"Food & Drink",d:2,q:"The most expensive spice by weight is…",opts:["Vanilla","Cinnamon","Saffron","Cardamom"],correct:2,fact:"It takes thousands of hand-picked crocus flowers per kilogram."},
+    {cat:"Food & Drink",d:2,q:"Tofu is made from…",opts:["Rice","Soybeans","Wheat","Corn"],correct:1,fact:"It's made by curdling soy milk, a bit like cheese."},
+    {cat:"Food & Drink",d:2,q:"Which of these is botanically a berry?",opts:["Strawberry","Raspberry","Banana","Cherry"],correct:2,fact:"Bananas, grapes, and tomatoes are berries — strawberries aren't."},
+    {cat:"Food & Drink",d:3,q:"Chocolate comes from the seeds of which tree?",opts:["Coffea","Cacao","Coconut","Palm"],correct:1,fact:"The Aztecs once used cacao beans as currency."},
+    {cat:"Food & Drink",d:3,q:"What gives chili peppers their heat?",opts:["Capsaicin","Caffeine","Menthol","Tannin"],correct:0,fact:"Capsaicin tricks your heat receptors — no actual burning occurs."}
+  ];
+
+  // ---- utils ----
+  const app_el = document.getElementById("app");
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const genCode = () => Array.from({length:4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join("");
+  const genId = () => Math.random().toString(36).slice(2,10);
+  const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+  const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch {} };
+  const lsDel = k => { try { localStorage.removeItem(k); } catch {} };
+
+  // ---- state ----
+  let me = { id: lsGet("bb_id") || genId(), name: lsGet("bb_name") || "" };
+  lsSet("bb_id", me.id);
+  let db = null;
+  if (CONFIG_OK) { try { db = getDatabase(initializeApp(firebaseConfig)); } catch (e) { db = null; window.__bbInitErr = (e && e.message) || String(e); } }
+
+  let view = "home";
+  let room = null;
+  let currentCode = null;
+  let unsub = null;
+  let myPick = null;
+  let lastRoundKey = null;
+  let revealAttemptRound = -99;
+  let settings = { rounds: 10, timer: 30 };
+
+  const rref = p => ref(db, "rooms/" + currentCode + (p ? "/" + p : ""));
+
+  // ---- rendering ----
+  function render(){
+    app_el.innerHTML = viewHTML();
+    if (room && room.phase === "question") updateTimerUI();
+  }
+  function viewHTML(){
+    if (!CONFIG_OK) return setupHTML();
+    if (!db) return errorHTML("Firebase couldn't start. Double-check every config value." + (window.__bbInitErr ? " (" + esc(window.__bbInitErr) + ")" : ""));
+    if (view === "home") return homeHTML();
+    if (!room) return centered("Connecting…");
+    if (room.phase === "lobby") return lobbyHTML();
+    if (room.phase === "question") return questionHTML();
+    if (room.phase === "reveal") return revealHTML();
+    if (room.phase === "ended") return endedHTML();
+    return centered("…");
+  }
+  const centered = t => `<div class="wrap center"><div class="tag">${esc(t)}</div></div>`;
+  const setMsg = t => { const m = document.getElementById("msg"); if (m) m.textContent = t; };
+
+  function setupHTML(){
+    return `<div class="wrap">
+      <h1 class="title" style="font-size:32px">Almost there</h1>
+      <p class="tag">This game runs on your own free Firebase backend. Add its config to this file, then host the file.</p>
+      <div class="card left steps" style="line-height:1.7">
+        <b>1.</b> Create a project at console.firebase.google.com<br/>
+        <b>2.</b> Build → Realtime Database → Create database → start in <b>test mode</b><br/>
+        <b>3.</b> Project settings → Your apps → Web (&lt;/&gt;) → copy the <b>firebaseConfig</b><br/>
+        <b>4.</b> Paste it into this file where it says <b>PASTE_…</b> (must include <b>databaseURL</b>)<br/>
+        <b>5.</b> Host the file and open the link on each phone
+      </div>
+      <p class="tag" style="margin-top:12px">Seeing this inside Claude's preview? That's expected — download this file and host it.</p>
+    </div>`;
+  }
+  const errorHTML = t => `<div class="wrap"><h1 class="title" style="font-size:30px">Hmm</h1><p class="tag">${esc(t)}</p></div>`;
+
+  function homeHTML(){
+    return `<div class="wrap">
+      <div class="spot" style="--g:var(--aqua)"><div class="emoji">🧠</div></div>
+      <h1 class="title" style="margin-top:-6px">Brain Buzz</h1>
+      <p class="tag">Live trivia — everyone on their own phone.</p>
+      <div style="margin-top:24px">
+        <input id="nameInput" class="field" maxlength="14" placeholder="Your name" value="${esc(me.name)}"/>
+        <button class="cta coral" data-action="create">Create a game</button>
+        <div class="or"><span></span><em>or join one</em><span></span></div>
+        <div class="row">
+          <input id="codeInput" class="field code" maxlength="4" placeholder="Room code"/>
+          <button class="cta aqua sm" data-action="join">Join</button>
+        </div>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>`;
+  }
+
+  function lobbyHTML(){
+    const players = Object.entries(room.players || {});
+    const opt = (v,cur,label,act) => `<button class="pill${cur===v?" on":""}" data-action="${act}" data-v="${v}">${label}</button>`;
+    return `<div class="wrap center">
+      <div class="muted">Room code</div>
+      <div class="code-big">${esc(room.code || currentCode)}</div>
+      <p class="tag">Share this code (or the page link) so friends can join.</p>
+      <div class="card">
+        <div class="muted" style="margin-bottom:8px">Players (${players.length})</div>
+        <div class="chips">${players.map(([id,p]) => `<span class="chip${id===me.id?" me":""}">${esc(p.name)}${id===me.id?" (you)":""}</span>`).join("")}</div>
+      </div>
+      <div class="muted left" style="margin-top:16px">Questions</div>
+      <div class="row3">${[5,10,15].map(v => opt(v, room.totalRounds, v, "rounds")).join("")}</div>
+      <div class="muted left" style="margin-top:12px">Timer per question</div>
+      <div class="row3">${[15,30,0].map(v => opt(v, room.timerSecs, v===0?"Off":v+"s", "timer")).join("")}</div>
+      <button class="cta coral" data-action="start" ${players.length<2?"disabled":""}>${players.length<2?"Waiting for players…":"Start game"}</button>
+      <button class="cta ghost" data-action="leave">Leave</button>
+    </div>`;
+  }
+
+  function questionHTML(){
+    const q = BANK[room.seqIdx[room.round]];
+    const dmap = {1:["Easy","var(--green)"],2:["Medium","var(--yellow)"],3:["Hard","var(--coral)"]};
+    const [dl,dc] = dmap[q.d];
+    const players = Object.keys(room.players || {}).length;
+    const answered = Object.keys((room.answers && room.answers[room.round]) || {}).length;
+    const locked = myPick != null;
+    const timer = room.timerSecs > 0 ? `<div class="tbar"><div id="timerbar" class="tfill"></div></div><div id="timertext" class="ttext"></div>` : "";
+    return `<div class="wrap">
+      <div class="qhead"><span class="muted">Question ${room.round+1} of ${room.totalRounds}</span>
+        <span class="dpill" style="--dc:${dc}">${dl} · ${q.d} ${q.d===1?"pt":"pts"}</span></div>
+      ${timer}
+      <div class="qcard"><div class="muted">${CAT_ICON[q.cat]||"❓"} ${esc(q.cat)}</div><div class="qtext">${esc(q.q)}</div></div>
+      <div class="opts">${q.opts.map((o,i) => `<button class="opt${myPick===i?" picked":""}" data-action="answer" data-i="${i}" ${locked?"disabled":""}>${esc(o)}${myPick===i?"  ✓":""}</button>`).join("")}</div>
+      <div class="muted center" style="margin-top:14px">${locked?"Locked in — waiting for others":"Tap your answer"} · ${answered}/${players} in</div>
+      <button class="cta aqua" data-action="reveal">Reveal answers</button>
+      <button class="cta ghost" data-action="leave">Leave</button>
+    </div>`;
+  }
+
+  function revealHTML(){
+    const q = BANK[room.seqIdx[room.round]];
+    const mine = room.answers && room.answers[room.round] ? room.answers[room.round][me.id] : undefined;
+    const gotIt = mine === q.correct;
+    const status = gotIt ? "You got it!" : (mine == null ? "No answer" : "Not quite");
+    const scolor = gotIt ? "var(--aqua)" : "var(--coral)";
+    return `<div class="wrap center">
+      <div class="status pop" style="color:${scolor}">${status}</div>
+      <div class="ans ok">✓ Answer: <b>${esc(q.opts[q.correct])}</b></div>
+      ${(!gotIt && mine != null) ? `<div class="ans no">✗ You picked: <b>${esc(q.opts[mine])}</b></div>` : ""}
+      <div class="fact"><span style="color:var(--yellow)">💡</span> ${esc(q.fact)}</div>
+      <div class="muted left" style="margin-top:16px">Scores</div>
+      ${scoreboardHTML(false)}
+      <button class="cta coral" data-action="next">${room.round+1 >= room.totalRounds ? "Finish" : "Next question"}</button>
+      <button class="cta ghost" data-action="leave">Leave</button>
+    </div>`;
+  }
+
+  function endedHTML(){
+    const board = scoreArray();
+    const top = board.length ? board[0].score : 0;
+    const winners = board.filter(b => b.score === top).map(b => b.name);
+    return `<div class="wrap center">
+      <div class="emoji pop" style="font-size:40px">🏆</div>
+      <div class="muted">${winners.length>1?"It's a tie!":"Winner"}</div>
+      <div class="code-big" style="letter-spacing:normal">${winners.map(esc).join(" & ")}</div>
+      ${scoreboardHTML(true)}
+      <button class="cta coral" data-action="playagain">Play again</button>
+      <button class="cta ghost" data-action="leave">Leave</button>
+    </div>`;
+  }
+
+  function scoreFor(pid){
+    if (!room || !room.seqIdx) return 0;
+    const through = (room.phase === "reveal" || room.phase === "ended") ? room.round : room.round - 1;
+    let s = 0;
+    for (let r = 0; r <= through; r++){
+      const idx = room.seqIdx[r]; if (idx == null) continue;
+      const ans = room.answers && room.answers[r] ? room.answers[r][pid] : undefined;
+      if (ans === BANK[idx].correct) s += BANK[idx].d;
+    }
+    return s;
+  }
+  function scoreArray(){
+    return Object.entries(room.players || {})
+      .map(([id,p]) => ({ id, name: p.name, score: scoreFor(id) }))
+      .sort((a,b) => b.score - a.score);
+  }
+  function scoreboardHTML(medal){
+    const arr = scoreArray(); const m = ["🥇","🥈","🥉"];
+    return `<div class="board">${arr.map((p,i) => `<div class="brow${medal&&i===0?" top":""}"><span>${medal?(m[i]||(i+1)+".")+" ":""}${esc(p.name)}${p.id===me.id?" (you)":""}</span><b>${p.score}</b></div>`).join("")}</div>`;
+  }
+
+  // ---- realtime ----
+  function listen(code){
+    if (unsub) { unsub(); unsub = null; }
+    unsub = onValue(ref(db, "rooms/" + code), snap => {
+      room = snap.val();
+      if (room === null){
+        if (unsub) { unsub(); unsub = null; }
+        currentCode = null; lsDel("bb_code"); view = "home"; render(); setMsg("That game has ended.");
+        return;
+      }
+      if (room.phase === "question"){
+        const key = "r" + room.round;
+        if (key !== lastRoundKey){ lastRoundKey = key; myPick = null; revealAttemptRound = -99; }
+        if (myPick == null && room.answers && room.answers[room.round] && room.answers[room.round][me.id] != null){
+          myPick = room.answers[room.round][me.id];
+        }
+      }
+      maybeAutoReveal();
+      render();
+    });
+  }
+
+  function updateTimerUI(){
+    if (!room || room.phase !== "question" || !room.timerSecs) return;
+    const remain = Math.max(0, room.timerSecs - Math.floor((Date.now() - room.qStartTs) / 1000));
+    const bar = document.getElementById("timerbar");
+    const txt = document.getElementById("timertext");
+    if (bar){ bar.style.width = (remain / room.timerSecs * 100) + "%"; bar.style.background = remain <= 5 ? "var(--coral)" : "var(--aqua)"; }
+    if (txt){ txt.textContent = remain + "s"; txt.style.color = remain <= 5 ? "var(--coral)" : "var(--lav)"; }
+  }
+
+  function maybeAutoReveal(){
+    if (!db || !room || room.phase !== "question" || !currentCode) return;
+    if (revealAttemptRound === room.round) return;
+    const players = Object.keys(room.players || {}).length;
+    const answered = Object.keys((room.answers && room.answers[room.round]) || {}).length;
+    const timeUp = room.timerSecs > 0 && (Date.now() - room.qStartTs) >= room.timerSecs * 1000;
+    if (players > 0 && (answered >= players || timeUp)){
+      revealAttemptRound = room.round;
+      update(rref(), { phase: "reveal" }).catch(()=>{});
+    }
+  }
+
+  // ---- actions ----
+  async function createRoom(){
+    const name = (document.getElementById("nameInput").value || "").trim().slice(0,14);
+    if (!name){ setMsg("Enter your name first."); return; }
+    me.name = name; lsSet("bb_name", name);
+    let code = genCode();
+    try {
+      for (let i = 0; i < 5; i++){ const s = await get(ref(db, "rooms/" + code)); if (!s.exists()) break; code = genCode(); }
+      await set(ref(db, "rooms/" + code), {
+        code, phase: "lobby", round: -1, totalRounds: settings.rounds, timerSecs: settings.timer,
+        seqIdx: null, qStartTs: 0, answers: null, players: { [me.id]: { name } }, createdAt: Date.now()
+      });
+    } catch (e){ setMsg("Could not reach Firebase: " + ((e && e.message) || e)); return; }
+    currentCode = code; lsSet("bb_code", code);
+    listen(code); view = "room"; render();
+  }
+
+  async function joinRoom(){
+    const name = (document.getElementById("nameInput").value || "").trim().slice(0,14);
+    const code = (document.getElementById("codeInput").value || "").trim().toUpperCase();
+    if (!name){ setMsg("Enter your name first."); return; }
+    if (!code){ setMsg("Enter a room code."); return; }
+    me.name = name; lsSet("bb_name", name);
+    let snap;
+    try { snap = await get(ref(db, "rooms/" + code)); }
+    catch (e){ setMsg("Could not reach Firebase: " + ((e && e.message) || e)); return; }
+    if (!snap.exists()){ setMsg('No game found with code "' + code + '".'); return; }
+    try { await set(ref(db, "rooms/" + code + "/players/" + me.id), { name }); }
+    catch (e){ setMsg("Join failed: " + ((e && e.message) || e)); return; }
+    currentCode = code; lsSet("bb_code", code);
+    listen(code); view = "room"; render();
+  }
+
+  function startGame(){
+    const total = room.totalRounds || 10;
+    const seq = shuffle(BANK.map((_,i) => i)).slice(0, total);
+    update(rref(), { phase: "question", round: 0, seqIdx: seq, qStartTs: Date.now(), answers: null }).catch(()=>{});
+  }
+  function reveal(){ update(rref(), { phase: "reveal" }).catch(()=>{}); }
+  function nextRound(){
+    const nr = room.round + 1;
+    if (nr >= room.totalRounds) update(rref(), { phase: "ended" }).catch(()=>{});
+    else update(rref(), { phase: "question", round: nr, qStartTs: Date.now() }).catch(()=>{});
+  }
+  function playAgain(){
+    const total = room.totalRounds || 10;
+    const seq = shuffle(BANK.map((_,i) => i)).slice(0, total);
+    update(rref(), { phase: "question", round: 0, seqIdx: seq, qStartTs: Date.now(), answers: null }).catch(()=>{});
+  }
+  async function answer(i){
+    if (!room || room.phase !== "question" || myPick != null) return;
+    myPick = i; render();
+    try { await set(ref(db, "rooms/" + currentCode + "/answers/" + room.round + "/" + me.id), i); } catch {}
+  }
+  function setRounds(v){ if (room && room.phase === "lobby") update(rref(), { totalRounds: v }).catch(()=>{}); }
+  function setTimer(v){ if (room && room.phase === "lobby") update(rref(), { timerSecs: v }).catch(()=>{}); }
+  function leave(){
+    try { if (currentCode) remove(ref(db, "rooms/" + currentCode + "/players/" + me.id)); } catch {}
+    if (unsub) { unsub(); unsub = null; }
+    currentCode = null; room = null; myPick = null; lastRoundKey = null;
+    lsDel("bb_code"); view = "home"; render();
+  }
+
+  // ---- events ----
+  app_el.addEventListener("click", ev => {
+    const t = ev.target.closest("[data-action]"); if (!t) return;
+    const a = t.getAttribute("data-action");
+    if (a === "create") createRoom();
+    else if (a === "join") joinRoom();
+    else if (a === "start") startGame();
+    else if (a === "answer") answer(parseInt(t.getAttribute("data-i"), 10));
+    else if (a === "reveal") reveal();
+    else if (a === "next") nextRound();
+    else if (a === "playagain") playAgain();
+    else if (a === "leave") leave();
+    else if (a === "rounds") setRounds(parseInt(t.getAttribute("data-v"), 10));
+    else if (a === "timer") setTimer(parseInt(t.getAttribute("data-v"), 10));
+  });
+
+  // ---- init (with refresh-resume) ----
+  (async function init(){
+    render();
+    if (CONFIG_OK && db){
+      const saved = lsGet("bb_code");
+      if (saved){
+        try {
+          const s = await get(ref(db, "rooms/" + saved));
+          if (s.exists()){ currentCode = saved; listen(saved); view = "room"; }
+          else lsDel("bb_code");
+        } catch {}
+        render();
+      }
+      setInterval(() => { updateTimerUI(); maybeAutoReveal(); }, 1000);
+    }
+  })();
+</script>
+</body>
+</html>
